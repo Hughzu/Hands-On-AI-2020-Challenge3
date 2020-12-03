@@ -52,7 +52,7 @@ def clean(learn):
     res = stl.fit()
 
     series = learn
-    detrend <- series - res.trend 
+    detrend = series - res.trend 
     strength = 1 - np.var(res.resid) / np.var(detrend)
     if strength >= 0.6:
         series = res.trend + res.resid # deseasonlized series
