@@ -14,9 +14,15 @@ def embedding(data, p):
 
 def smape(y_true, y_pred):
     denominator = (y_true + np.abs(y_pred)) / 200.0
-    diff = np.abs(y_true - y_pred) / denominator
-    diff[denominator == 0] = 0.0
-    return np.mean(diff)
+    SAPE = np.abs(y_true - y_pred) / denominator
+    SAPE[denominator == 0] = 0.0
+    return np.mean(SAPE)
+
+def mape(y_true, y_pred):
+    denominator = np.abs(y_true)
+    APE = np.abs(y_true - y_pred) / denominator
+    APE[denominator == 0] = 0.0
+    return np.mean(APE)
 
 def keyvalue(df):
     df["horizon"] = range(1, df.shape[0]+1)
