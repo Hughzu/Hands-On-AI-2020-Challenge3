@@ -12,17 +12,23 @@ def embedding(data, p):
     X = data_shifted[['y_t' + '{0:+}'.format(lag) for lag in range(-p+1, 1)]].to_numpy()
     return (X,y, data_shifted)
 
-def smape(y_true, y_pred):
-    denominator = (y_true + np.abs(y_pred)) / 200.0
-    SAPE = np.abs(y_true - y_pred) / denominator
-    SAPE[denominator == 0] = 0.0
-    return np.mean(SAPE)
+def mse(y_true, y_pred):
+    return np.mean((y_true - y_pred).pow(2))
+
+def mae(y_true, y_pred):
+    return np.mean(np.abs(y_true - y_pred))
 
 def mape(y_true, y_pred):
     denominator = np.abs(y_true)
     APE = np.abs(y_true - y_pred) / denominator
     APE[denominator == 0] = 0.0
     return np.mean(APE)
+
+def smape(y_true, y_pred):
+    denominator = (y_true + np.abs(y_pred)) / 200.0
+    SAPE = np.abs(y_true - y_pred) / denominator
+    SAPE[denominator == 0] = 0.0
+    return np.mean(SAPE)
 
 def keyvalue(df):
     df["horizon"] = range(1, df.shape[0]+1)

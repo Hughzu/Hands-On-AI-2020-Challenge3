@@ -8,18 +8,20 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
 
-def X_y(data, HORIZON, tensor_structure, freq = "D"):
-    data_inputs = TimeSeriesTensor(data, 'traffic', HORIZON, tensor_structure, freq = freq)
+def X_y(data, HORIZON, tensor_structure, freq = "D", variable = 'traffic'):
+    #breakpoint()
+    data_inputs = TimeSeriesTensor(data, variable, HORIZON, tensor_structure, freq = freq)
     DT = data_inputs.dataframe
     X = DT.iloc[:, DT.columns.get_level_values(0)=='encoder_input']
     y = DT.iloc[:, DT.columns.get_level_values(0)=='target']
     return data_inputs, X, y
 
-def embed_data(train, valid, test, HORIZON, LAG):
-    tensor_structure = {'encoder_input':(range(-LAG+1, 1), ['traffic']), 'decoder_input':(range(0, HORIZON), ['traffic'])}
-    train_inputs, X_train, y_train = X_y(train, HORIZON, tensor_structure)
-    valid_inputs, X_valid, y_valid = X_y(valid, HORIZON, tensor_structure)
-    test_inputs, X_test, y_test   = X_y(test, HORIZON, tensor_structure)
+def embed_data(train, valid, test, HORIZON, LAG, freq = "D", variable = 'traffic'):
+    #tensor_structure = {'encoder_input':(range(-LAG+1, 1), ['traffic']), 'decoder_input':(range(0, HORIZON), ['traffic'])}
+    tensor_structure = {'encoder_input':(range(-LAG+1, 1), [variable]), 'decoder_input':(range(0, HORIZON), [variable])}
+    train_inputs, X_train, y_train = X_y(train, HORIZON, tensor_structure, freq = freq, variable = variable)
+    valid_inputs, X_valid, y_valid = X_y(valid, HORIZON, tensor_structure, freq = freq, variable = variable)
+    test_inputs, X_test, y_test   = X_y(test, HORIZON, tensor_structure, freq = freq, variable = variable)
     return train_inputs, valid_inputs, test_inputs, X_train, y_train, X_valid, y_valid, X_test, y_test
 
 def plot_learning_curves(history):
@@ -43,15 +45,13 @@ def plot_forecasts(eval_df, HORIZON, h):
     plt.ylabel('traffic', fontsize=12)
     plt.show()
 
-def clean(learn):
-    #stl = STL(learn, period = 7, robust = True, seasonal = 7*120 + 1)
-    n_learn = len(learn)
-    if n_learn % 2 == 0:
-        n_learn = n_learn - 1
-    stl = STL(learn, period = 7, robust = True, seasonal = n_learn)
+def clean(series):
+    n_series = len(series)
+    if n_series % 2 == 0:
+        n_series = n_series - 1
+    stl = STL(series, period = 7, robust = True, seasonal = n_series)
     res = stl.fit()
 
-    series = learn
     detrend = series - res.trend 
     strength = 1 - np.var(res.resid) / np.var(detrend)
     if strength >= 0.6:
@@ -70,28 +70,27 @@ def clean(learn):
 
     
     # Find residuals outside limits
-    learn_cleaned = learn.copy()
+    series_cleaned = series.copy()
     outliers = None
     if (limits[1] - limits[0]) > 1e-14:
         outliers = [a or b for a, b in zip((resid < limits[0]).to_numpy() , (resid > limits[1]).to_numpy())]
         if any(outliers):
-            learn_cleaned.loc[outliers] = np.nan
+            series_cleaned.loc[outliers] = np.nan
             # Replace outliers 
             id_outliers = [i for i, x in enumerate(outliers) if x]
             for ii in id_outliers:
                 xx = [ii - 2, ii - 1, ii + 1, ii + 2]
-                xx = [x for x in xx if x < learn_cleaned.shape[0] and x >= 0]
+                xx = [x for x in xx if x < series_cleaned.shape[0] and x >= 0]
                 assert(len(xx) > 0)
-                #breakpoint()
-                assert(not np.isnan(learn_cleaned.iloc[xx]).to_numpy().all())
-                learn_cleaned.iloc[ii] = np.nanmedian(learn_cleaned.iloc[xx].to_numpy().flatten())
+                assert(not np.isnan(series_cleaned.iloc[xx]).to_numpy().all())
+                series_cleaned.iloc[ii] = np.nanmedian(series_cleaned.iloc[xx].to_numpy().flatten())
     
-    return learn_cleaned, outliers
+    return series_cleaned, outliers
 
 
-def mape(predictions, actuals):
-    """Mean absolute percentage error"""
-    return ((predictions - actuals).abs() / actuals).mean()
+#def mape(predictions, actuals):
+#    """Mean absolute percentage error"""
+#    return ((predictions - actuals).abs() / actuals.abs()).mean()
 
 
 def create_evaluation_df(predictions, test_inputs, H, scaler):
